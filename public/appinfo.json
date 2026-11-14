@@ -1,0 +1,14 @@
+{
+  "id": "io.nowave.vizion",
+  "version": "0.0.1",
+  "vendor": "Nowave",
+  "type": "web",
+  "main": "index.html",
+  "title": "Vizion",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#000000",
+  "iconColor": "#000000",
+  "disableBackHistoryAPI": true,
+  "supportPortraitMode": false
+}

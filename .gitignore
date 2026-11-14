@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+.superpowers/
+*.ipk
+.DS_Store
+
+.playwright-cli/
+output/
+.env.local
+.env.*.local
