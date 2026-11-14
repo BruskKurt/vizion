@@ -1,4 +1,5 @@
-import { FocusContext, useFocusable } from '@noriginmedia/norigin-spatial-navigation'
+import { FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../../navigation/spatial'
 import { continueWatchingStore } from '../../profiles/continue-watching'
 import { profileStore } from '../../profiles/store'
 import { playItem } from '../../screens/player/playback'

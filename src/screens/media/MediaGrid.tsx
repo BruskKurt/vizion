@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { useFocusable, FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { memo } from 'preact/compat'
+import { FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../../navigation/spatial'
 import type { Category } from '../../data/models'
 import { profileStore } from '../../profiles/store'
 import { focusIfExists } from '../../navigation/focus'
@@ -12,6 +14,26 @@ import { t } from '../../i18n'
 const COLS = 6
 const ROW_H = 333
 const WINDOW = 3
+// memo : changer de rangée ne re-rend plus toutes les tuiles de la fenêtre.
+const GridTile = memo(function GridTile({ item, index, col, navRailKey, onFocusTile, onSelectTile, onStep }: {
+  item: PosterItem
+  index: number
+  col: number
+  navRailKey?: string
+  onFocusTile: (item: PosterItem, index: number) => void
+  onSelectTile: (item: PosterItem, index: number) => void
+  onStep: (index: number, delta: number) => boolean
+}) {
+  return <PosterTile item={item} focusKey={posterItemKey(item.id)}
+    onFocus={() => onFocusTile(item, index)} onSelect={() => onSelectTile(item, index)}
+    onArrowPress={direction => {
+      // Haut/bas par index : évite que Norigin mesure toutes les tuiles à chaque appui.
+      if (direction === 'up' || direction === 'down') return !onStep(index, direction === 'down' ? COLS : -COLS)
+      if (direction === 'left' && col === 0 && navRailKey) return !focusIfExists(navRailKey)
+      return true
+    }} />
+})
+
 interface Props {
   catId: string
   load: (catId: string) => Promise<PosterItem[]>
@@ -59,10 +81,15 @@ export function MediaGrid({ catId, load, categories, fallbackTitle, navRailKey, 
     }, 0)
     return () => clearTimeout(timer)
   }, [loading, sorted, memoryKey])
-  function remember(item: PosterItem, index: number) {
+  const remember = useCallback((item: PosterItem, index: number) => {
     setCenterRow(Math.floor(index / COLS))
     savePosition(memoryKey, { id: item.id, index, scrollTop: scrollRef.current?.scrollTop ?? 0, sort })
-  }
+  }, [memoryKey, sort])
+  const selectTile = useCallback((item: PosterItem, index: number) => { remember(item, index); onOpen(item) }, [remember, onOpen])
+  const step = useCallback((index: number, delta: number) => {
+    const next = sorted[index + delta]
+    return !!next && focusIfExists(posterItemKey(next.id))
+  }, [sorted])
   const totalRows = Math.ceil(sorted.length / COLS)
   const start = Math.max(0, centerRow - WINDOW)
   const end = Math.min(totalRows, centerRow + WINDOW + 1)
@@ -81,7 +108,7 @@ export function MediaGrid({ catId, load, categories, fallbackTitle, navRailKey, 
     {error && <div role="alert" style={{ padding: '16px 48px' }}><p>{t('common.loadError')}</p><ActionButton onPress={() => retry(n => n + 1)}>{t('common.retry')}</ActionButton></div>}
     {!loading && !error && !sorted.length && <p style={{ padding: '16px 48px' }}>{t('common.noContent')}</p>}
     {!loading && !error && sorted.length > 0 && <FocusContext.Provider value={focusKey}>
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', overflowAnchor: 'none', padding: '0 48px 48px' }} onScroll={() => {
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', overflowAnchor: 'none', padding: '0 48px 48px', background: 'var(--bg)' }} onScroll={() => {
         const position = readPosition(memoryKey)
         savePosition(memoryKey, { ...position, scrollTop: scrollRef.current?.scrollTop ?? 0, sort })
       }}>
@@ -89,12 +116,8 @@ export function MediaGrid({ catId, load, categories, fallbackTitle, navRailKey, 
         {Array.from({ length: end - start }, (_, row) => {
           const offset = (start + row) * COLS
           return <div key={start + row} style={{ display: 'flex', gap: 16, marginBottom: 24, height: ROW_H - 24 }}>
-            {sorted.slice(offset, offset + COLS).map((item, col) => <PosterTile key={item.id} item={item} focusKey={posterItemKey(item.id)}
-              onFocus={() => remember(item, offset + col)} onSelect={() => { remember(item, offset + col); onOpen(item) }}
-              onArrowPress={direction => {
-                if (direction === 'left' && col === 0 && navRailKey) return !focusIfExists(navRailKey)
-                return true
-              }} />)}
+            {sorted.slice(offset, offset + COLS).map((item, col) => <GridTile key={item.id} item={item} index={offset + col} col={col}
+              navRailKey={navRailKey} onFocusTile={remember} onSelectTile={selectTile} onStep={step} />)}
           </div>
         })}
         <div style={{ height: Math.max(0, (totalRows - end) * ROW_H) }} />

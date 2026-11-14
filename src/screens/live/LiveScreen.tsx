@@ -18,6 +18,9 @@ import { ActionButton } from '../../components/ActionButton'
 import { t } from '../../i18n'
 
 const PREVIEW_DELAY = 1000
+// Touche maintenue : le panneau d'aperçu (logo, EPG) n'est mis à jour qu'à l'arrêt,
+// au lieu de recharger un logo et de re-rendre l'écran à chaque ligne traversée.
+const FOCUS_SETTLE = 150
 
 function sortChannels(list: Channel[]): Channel[] {
   return [...list].sort((a, b) => {
@@ -47,11 +50,18 @@ export function LiveScreen() {
   const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000))
   const [error, setError] = useState<string | null>(null)
   const initialFocusDone = useRef(false)
+  const lastChannelFocus = useRef(0)
+  const settleTimer = useRef<ReturnType<typeof setTimeout>>()
   const [attempt, retry] = useState(0)
   const hiddenLiveCategoryIds = profileId ? settingsStore.getHiddenLiveCategoryIds(profileId) : []
   const hiddenCategoryIdSet = new Set(hiddenLiveCategoryIds)
   const visiblePlaylistCategories = playlistCategories.filter((cat) => !hiddenCategoryIdSet.has(cat.id))
-  const categories = [{ id: FAV_ID, name: t('live.favorites'), kind: 'live' as const }, ...visiblePlaylistCategories]
+  const favLabel = t('live.favorites')
+  // Mémorisé : une nouvelle référence à chaque rendu re-rendrait toutes les catégories.
+  const categories = useMemo(
+    () => [{ id: FAV_ID, name: favLabel, kind: 'live' as const }, ...visiblePlaylistCategories],
+    [playlistCategories, hiddenLiveCategoryIds.join('|'), favLabel],
+  )
   // Back en mode édition des catégories : termine l'édition au lieu de quitter le Direct.
   useBackHandler(useCallback(() => { setEditingCategories(false); return true }, []), editingCategories)
 
@@ -93,6 +103,7 @@ export function LiveScreen() {
   // Chaînes brutes de la catégorie (le filtre Favoris est appliqué en rendu).
   useEffect(() => {
     let alive = true
+    clearTimeout(settleTimer.current)
     const favIdsNow = profileId ? favoritesStore.list(profileId) : []
     // Favoris sans favori : rien à charger (pas de fetch global coûteux).
     if (selectedCat === FAV_ID && favIdsNow.length === 0) {
@@ -115,10 +126,23 @@ export function LiveScreen() {
   const favIds = profileId ? favoritesStore.list(profileId) : []
   const channels = useMemo(() => selectedCat === FAV_ID ? loaded.filter((c) => favIds.includes(c.id)) : loaded, [loaded, selectedCat, favIds.join('|')])
 
-  function focusFirstChannel(): boolean {
+  const focusFirstChannel = useCallback((): boolean => {
     if (!channels[0]) return false
     return focusIfExists(channelFocusKey(channels[0].id))
-  }
+  }, [channels])
+
+  const onFocusChannel = useCallback((ch: Channel) => {
+    if (restoreRef.current?.channelId === ch.id) restoreRef.current = null
+    clearTimeout(settleTimer.current)
+    const now = performance.now()
+    const rapid = now - lastChannelFocus.current < FOCUS_SETTLE
+    lastChannelFocus.current = now
+    if (rapid) settleTimer.current = setTimeout(() => setFocused(ch), FOCUS_SETTLE)
+    else setFocused(ch)
+  }, [])
+  useEffect(() => () => clearTimeout(settleTimer.current), [])
+
+  const playChannel = useCallback((c: Channel) => startPlayback(c, selectedCat), [selectedCat])
 
   function toggleCategoryVisibility(categoryId: string) {
     if (!profileId) return
@@ -172,7 +196,8 @@ export function LiveScreen() {
 
   // EPG now/next au focus.
   useEffect(() => {
-    setEpg([])
+    // Forme fonctionnelle : `[]` neuf à chaque focus forçait un second rendu complet.
+    setEpg((cur) => (cur.length ? [] : cur))
     if (!focused) return
     let alive = true
     const refresh = () => liveSession.nowNext(focused.id).then((e) => { if (alive) setEpg(e) })
@@ -206,8 +231,8 @@ export function LiveScreen() {
         restoreChannelId={restoreRef.current?.channelId}
         loading={loadingChans}
         selectedCategoryId={selectedCat}
-        onFocusChannel={ch => { setFocused(ch); if (restoreRef.current?.channelId === ch.id) restoreRef.current = null }}
-        onPlay={(c) => startPlayback(c, selectedCat)}
+        onFocusChannel={onFocusChannel}
+        onPlay={playChannel}
       />
       <ChannelPreview
         channel={focused}

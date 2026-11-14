@@ -1,6 +1,7 @@
 import { useFocusScroll } from '../../navigation/use-focus-scroll'
 import { useEffect, useState } from 'preact/hooks'
-import { useFocusable, FocusContext, setFocus } from '@noriginmedia/norigin-spatial-navigation'
+import { FocusContext, setFocus } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../../navigation/spatial'
 import type { Season, Episode } from '../../data/models'
 import { seriesSession } from '../../data/series-session-instance'
 import { continueWatchingStore } from '../../profiles/continue-watching'
@@ -140,7 +141,7 @@ function EpisodeRow({ episode, resumePosition, onPlay, onArrowPress }: EpisodeRo
           fontWeight: 700,
           color: 'var(--text-dim)',
           minWidth: 32,
-          textAlign: 'right',
+          textAlign: 'end',
           flexShrink: 0,
         }}
       >

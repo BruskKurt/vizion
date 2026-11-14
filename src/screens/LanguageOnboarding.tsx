@@ -94,10 +94,10 @@ export function LanguageOnboarding() {
         }}
       >
         <aside
+          className="divider-end"
           style={{
             height: '100%',
             padding: '56px 44px',
-            borderRight: '1px solid var(--hairline)',
             background: 'var(--bg-elevated)',
             display: 'flex',
             flexDirection: 'column',

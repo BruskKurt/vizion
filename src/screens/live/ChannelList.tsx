@@ -1,6 +1,8 @@
 import { useFocusScroll } from '../../navigation/use-focus-scroll'
-import { useEffect, useState } from 'preact/hooks'
-import { useFocusable, FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { useCallback, useEffect, useState } from 'preact/hooks'
+import { memo } from 'preact/compat'
+import { FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../../navigation/spatial'
 import type { Channel } from '../../data/models'
 import { focusIfExists } from '../../navigation/focus'
 import { categoryFocusKey, channelFocusKey, LIVE_CHANNELS, PREVIEW_PLAY } from './focus-keys'
@@ -17,21 +19,26 @@ interface Props {
 
 const ROW_H = 72
 // Fenêtre rendue autour du focus : large devant pour que la ligne suivante existe déjà
-// dans le DOM quand Norigin y déplace le focus (sinon navigation bloquée).
+// dans le DOM quand le focus y passe (sinon navigation bloquée).
 const WINDOW = 30
 
-function Row(props: {
+// memo : une ligne ne se re-rend que si son focus ou ses props changent (pas à chaque
+// déplacement dans la liste). Les callbacks reçus doivent donc rester stables.
+const Row = memo(function Row(props: {
   channel: Channel
   index: number
   selectedCategoryId?: string
   onFocusRow: (index: number, c: Channel) => void
   onPlay: (c: Channel) => void
+  onStep: (index: number, delta: number) => boolean
 }) {
   const { ref, focused } = useFocusable({
     focusKey: channelFocusKey(props.channel.id),
     onFocus: () => props.onFocusRow(props.index, props.channel),
     onEnterPress: () => props.onPlay(props.channel),
     onArrowPress: (direction) => {
+      // Haut/bas par index : évite que Norigin mesure toutes les lignes à chaque appui.
+      if (direction === 'up' || direction === 'down') return !props.onStep(props.index, direction === 'down' ? 1 : -1)
       if (direction === 'left' && props.selectedCategoryId && focusIfExists(categoryFocusKey(props.selectedCategoryId))) return false
       if (direction === 'right' && focusIfExists(PREVIEW_PLAY)) return false
       return true
@@ -45,7 +52,8 @@ function Row(props: {
       onClick={() => props.onPlay(props.channel)}
       style={{
         display: 'flex', alignItems: 'center', gap: 14, padding: '0 16px',
-        height: ROW_H, borderRadius: 10, fontSize: 21, fontWeight: focused ? 800 : 600,
+        // Graisse fixe : la changer au focus refait la mise en page du texte à chaque appui.
+        height: ROW_H, borderRadius: 10, fontSize: 21, fontWeight: 600,
         background: focused ? 'var(--focus-bg)' : 'transparent',
         color: 'var(--text)',
         boxShadow: focused ? 'var(--focus-glow)' : 'none',
@@ -58,7 +66,7 @@ function Row(props: {
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{props.channel.name}</span>
     </div>
   )
-}
+})
 
 export function ChannelList({ channels, loading, selectedCategoryId, onFocusChannel, onPlay, restoreChannelId }: Props) {
   const { ref, focusKey } = useFocusable({
@@ -80,6 +88,12 @@ export function ChannelList({ channels, loading, selectedCategoryId, onFocusChan
     }
   }, [channels, restoreChannelId])
 
+  const onFocusRow = useCallback((index: number, c: Channel) => { setCursor({ channels, index }); onFocusChannel(c) }, [channels, onFocusChannel])
+  const onStep = useCallback((index: number, delta: number) => {
+    const next = channels[index + delta]
+    return !!next && focusIfExists(channelFocusKey(next.id))
+  }, [channels])
+
   const start = Math.max(0, center - WINDOW)
   const end = Math.min(channels.length, center + WINDOW + 1)
   const windowed = channels.slice(start, end)
@@ -88,13 +102,15 @@ export function ChannelList({ channels, loading, selectedCategoryId, onFocusChan
     <FocusContext.Provider value={focusKey}>
       <div
         ref={ref}
+        className="divider-end"
         style={{
           width: 'var(--live-channel-width)',
-          borderRight: '1px solid var(--hairline)',
           padding: '28px 14px',
           height: '100%',
           overflowY: 'auto',
           overflowAnchor: 'none',
+          // Fond opaque : permet au navigateur de défiler sur une couche GPU sans repeindre la liste.
+          background: 'var(--bg)',
         }}
       >
         {loading && <p style={{ color: 'var(--text-dim)', padding: 16, fontSize: 20 }}>{t('common.loading')}</p>}
@@ -109,8 +125,9 @@ export function ChannelList({ channels, loading, selectedCategoryId, onFocusChan
                 channel={c}
                 index={start + i}
                 selectedCategoryId={selectedCategoryId}
-                onFocusRow={(idx, ch) => { setCursor({ channels, index: idx }); onFocusChannel(ch) }}
+                onFocusRow={onFocusRow}
                 onPlay={onPlay}
+                onStep={onStep}
               />
             ))}
             <div style={{ height: Math.max(0, (channels.length - end) * ROW_H) }} />

@@ -1,4 +1,5 @@
-import { useFocusable, FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../../navigation/spatial'
 import { SEARCH_KEYBOARD } from './search-focus-keys'
 import { t } from '../../i18n'
 

@@ -1,6 +1,8 @@
 import { useFocusScroll } from '../../navigation/use-focus-scroll'
-import { useEffect, useRef } from 'preact/hooks'
-import { useFocusable, FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { useCallback, useEffect, useRef } from 'preact/hooks'
+import { memo } from 'preact/compat'
+import { FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../../navigation/spatial'
 import type { Category } from '../../data/models'
 import { focusIfExists } from '../../navigation/focus'
 import { t } from '../../i18n'
@@ -27,12 +29,24 @@ interface Props {
   onResetVisibility: () => void
 }
 
-function Item(props: { id: string; label: string; selected: boolean; onSelect: () => void; onMoveRight: () => boolean }) {
+// memo + callbacks stables : un focus de chaîne ne re-rend plus toute la colonne.
+const Item = memo(function Item(props: {
+  id: string
+  index: number
+  label: string
+  selected: boolean
+  onSelect: (id: string) => void
+  onMoveRight: () => boolean
+  onStep: (index: number, delta: number) => boolean
+}) {
+  const select = () => props.onSelect(props.id)
   const { ref, focused } = useFocusable({
     focusKey: categoryFocusKey(props.id),
     // Chargement sur OK uniquement (pas au survol) → navigation plus fluide, moins de requêtes.
-    onEnterPress: props.onSelect,
+    onEnterPress: select,
     onArrowPress: (direction) => {
+      // Haut/bas par index : évite que Norigin mesure toutes les catégories à chaque appui.
+      if (direction === 'up' || direction === 'down') return !props.onStep(props.index, direction === 'down' ? 1 : -1)
       if (direction === 'right' && props.onMoveRight()) return false
       if (direction === 'left' && focusIfExists('nav-/direct')) return false
       return true
@@ -43,7 +57,7 @@ function Item(props: { id: string; label: string; selected: boolean; onSelect: (
     <div
       ref={ref}
       data-focused={focused}
-      onClick={props.onSelect}
+      onClick={select}
       style={{
         display: 'flex', alignItems: 'center', padding: '16px 18px', minHeight: 58, borderRadius: 10, fontSize: 20, fontWeight: props.selected ? 800 : 600,
         color: focused || props.selected ? 'var(--text)' : 'var(--text-dim)',
@@ -55,7 +69,7 @@ function Item(props: { id: string; label: string; selected: boolean; onSelect: (
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{props.label}</span>
     </div>
   )
-}
+})
 
 function ControlButton(props: { focusKey: string; label: string; onPress: () => void; onMoveRight?: () => boolean }) {
   const { ref, focused } = useFocusable({
@@ -167,6 +181,11 @@ export function CategoryList({
     return () => clearTimeout(id)
   }, [editing, selectedId])
 
+  const onStep = useCallback((index: number, delta: number) => {
+    const next = categories[index + delta]
+    return !!next && focusIfExists(categoryFocusKey(next.id))
+  }, [categories])
+
   const hiddenSet = new Set(hiddenCategoryIds)
   const hiddenCount = hiddenCategoryIds.length
   const hiddenCountLabel = t(hiddenCount > 1 ? 'live.hiddenCount.many' : 'live.hiddenCount.one', { count: hiddenCount })
@@ -175,12 +194,14 @@ export function CategoryList({
     <FocusContext.Provider value={focusKey}>
       <div
         ref={ref}
+        className="divider-end"
         style={{
           width: 'var(--live-category-width)',
-          borderRight: '1px solid var(--hairline)',
           padding: '28px 14px',
           height: '100%',
           overflowY: 'auto',
+          // Fond opaque : permet au navigateur de défiler sur une couche GPU sans repeindre la liste.
+          background: 'var(--bg)',
         }}
       >
         {editing ? (
@@ -212,14 +233,16 @@ export function CategoryList({
                 {hiddenCountLabel}
               </div>
             )}
-            {categories.map((c) => (
+            {categories.map((c, index) => (
               <Item
                 key={c.id}
                 id={c.id}
+                index={index}
                 label={c.name}
                 selected={c.id === selectedId}
-                onSelect={() => onSelect(c.id)}
+                onSelect={onSelect}
                 onMoveRight={onMoveRight}
+                onStep={onStep}
               />
             ))}
           </>

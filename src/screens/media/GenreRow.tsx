@@ -1,6 +1,7 @@
 import { useFocusScroll } from '../../navigation/use-focus-scroll'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { useFocusable, FocusContext, getCurrentFocusKey } from '@noriginmedia/norigin-spatial-navigation'
+import { FocusContext, getCurrentFocusKey } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../../navigation/spatial'
 import type { Category } from '../../data/models'
 import { focusIfExists } from '../../navigation/focus'
 import { seeMoreKey, genreRowKey, posterItemKey } from './media-focus-keys'

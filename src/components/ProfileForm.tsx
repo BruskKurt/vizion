@@ -9,6 +9,17 @@ import { t } from '../i18n'
 
 type Kind = 'xtream' | 'm3u'
 
+const IPTV_ORG = 'https://iptv-org.github.io/iptv/'
+/** Playlists publiques iptv-org proposées à la création pour tester l'app sans abonnement. */
+export const FREE_LISTS = [
+  { name: 'Global', badge: 'ALL', path: 'index.m3u' },
+  { name: 'Français', badge: 'FR', path: 'languages/fra.m3u' },
+  { name: 'English', badge: 'EN', path: 'languages/eng.m3u' },
+  { name: 'Español', badge: 'ES', path: 'languages/spa.m3u' },
+  { name: 'العربية', badge: 'AR', path: 'languages/ara.m3u' },
+  { name: 'News', badge: 'NEWS', path: 'categories/news.m3u' },
+].map(l => ({ name: `IPTV-ORG ${l.name}`, badge: l.badge, m3uUrl: IPTV_ORG + l.path }))
+
 interface Props {
   /** Profil à éditer ; absent = création. */
   editing?: Profile
@@ -55,7 +66,7 @@ function Field(props: {
           fontSize: 25,
           borderRadius: 10,
           border: `1px solid ${focused ? 'var(--focus-border)' : 'var(--hairline)'}`,
-          background: focused ? '#151b22' : 'var(--bg-elevated)',
+          background: focused ? 'var(--focus-bg)' : 'var(--bg-elevated)',
           color: 'var(--text)',
           boxShadow: focused ? 'var(--focus-glow)' : 'none',
           outline: 'none',
@@ -173,12 +184,13 @@ export function ProfileForm({ editing, onDone }: Props) {
   const [busy, setBusy] = useState(false)
   const title = editing ? t('profileForm.editTitle') : t('profileForm.addTitle')
 
-  async function submit() {
+  async function submit(preset?: Omit<Profile, 'id' | 'createdAt'>) {
+    if (busy) return
     setError(null)
     const data: Omit<Profile, 'id' | 'createdAt'> =
-      kind === 'xtream'
+      preset ?? (kind === 'xtream'
         ? { name: name || t('profileForm.defaultName'), kind, host, username, password }
-        : { name: name || t('profileForm.defaultName'), kind, m3uUrl }
+        : { name: name || t('profileForm.defaultName'), kind, m3uUrl })
     setBusy(true)
     try {
       const candidate: Profile = { ...data, id: 'candidate', createdAt: 0 }
@@ -209,10 +221,10 @@ export function ProfileForm({ editing, onDone }: Props) {
         }}
       >
         <aside
+          className="divider-end"
           style={{
             height: '100%',
             padding: '56px 44px',
-            borderRight: '1px solid var(--hairline)',
             background: 'var(--bg-elevated)',
             display: 'flex',
             flexDirection: 'column',
@@ -240,11 +252,9 @@ export function ProfileForm({ editing, onDone }: Props) {
             overflowY: 'auto',
             padding: '64px 76px',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
           }}
         >
-          <section style={{ width: 'min(900px, 100%)' }}>
+          <section style={{ width: 'min(900px, 100%)', margin: 'auto' }}>
             <div style={{ marginBottom: 28 }}>
               <div className="section-label">{t('profileForm.iptvProfile')}</div>
               {!editing && <ActionButton onPress={() => navigate('/configure')}>{t('remote.title')}</ActionButton>}
@@ -313,10 +323,29 @@ export function ProfileForm({ editing, onDone }: Props) {
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16, marginTop: 10 }}>
                   <Btn label={t('common.cancel')} onPress={onDone} />
-                  <Btn label={busy ? t('profileForm.connecting') : t('profileForm.save')} variant="primary" onPress={() => { if (!busy) submit() }} />
+                  <Btn label={busy ? t('profileForm.connecting') : t('profileForm.save')} variant="primary" onPress={() => submit()} />
                 </div>
               </div>
             </div>
+
+            {!editing && (
+              <div style={{ marginTop: 28 }}>
+                <div style={{ fontSize: 22, fontWeight: 850 }}>{t('profileForm.freeLists')}</div>
+                <div style={{ fontSize: 17, color: 'var(--text-dim)', margin: '6px 0 16px' }}>{t('profileForm.freeListsMeta')}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                  {FREE_LISTS.map(l => (
+                    <SourceOption
+                      key={l.m3uUrl}
+                      active={false}
+                      title={l.name}
+                      meta={l.m3uUrl.slice(IPTV_ORG.length)}
+                      badge={l.badge}
+                      onPress={() => submit({ name: l.name, kind: 'm3u', m3uUrl: l.m3uUrl })}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         </main>
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
-import { useFocusable, FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../../navigation/spatial'
 import type { Channel, Movie, Series } from '../../data/models'
 import { liveSession } from '../../data/session-instance'
 import { vodSession } from '../../data/vod-session-instance'

@@ -1,4 +1,5 @@
-import { useFocusable, FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { FocusContext } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../../navigation/spatial'
 import type { Channel, EpgEntry } from '../../data/models'
 import { currentEntry, nextEntry, progressPct } from '../../components/epg'
 import { VideoPlayer } from '../../components/VideoPlayer'

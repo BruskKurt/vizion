@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useLayoutEffect } from 'preact/hooks'
-import { useFocusable } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../navigation/spatial'
 import { useFocusScroll } from '../navigation/use-focus-scroll'
 
 export function Card(props: {

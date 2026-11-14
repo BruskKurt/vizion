@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'preact/hooks'
-import { useFocusable, FocusContext, setFocus } from '@noriginmedia/norigin-spatial-navigation'
+import { FocusContext, setFocus } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../navigation/spatial'
 import { resetNavigationStack, route } from '../router/router'
 import { focusIfExists } from '../navigation/focus'
 import { LIVE_CATEGORIES } from '../screens/live/focus-keys'
@@ -145,10 +146,11 @@ export function Sidebar() {
       <FocusContext.Provider value={focusKey}>
         <nav
           ref={ref}
+          className="divider-end"
           style={{
             width: 'var(--rail-width-expanded)', height: '100%',
             background: 'var(--bg-elevated)',
-            borderRight: '1px solid var(--hairline)', padding: '30px 18px',
+            padding: '30px 18px',
             display: 'flex', flexDirection: 'column', gap: 10,
           }}
         >

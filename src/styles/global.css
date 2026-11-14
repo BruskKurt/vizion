@@ -17,6 +17,11 @@ body {
   text-transform: uppercase;
   color: var(--text-dim);
 }
+/* Séparateur vertical côté fin (droite en LTR, gauche en RTL). */
+.divider-end { border-right: 1px solid var(--hairline); }
+[dir='rtl'] .divider-end { border-right: 0; border-left: 1px solid var(--hairline); }
+/* L'espacement des lettres casse les liaisons de l'écriture arabe. */
+:lang(ar) .section-label { letter-spacing: 0; }
 /* Curseur clignotant du champ de recherche. */
 @keyframes blink { 50% { opacity: 0; } }
 @keyframes loading-spin { to { transform: rotate(360deg); } }

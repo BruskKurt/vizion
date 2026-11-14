@@ -1,5 +1,5 @@
 import { useFocusScroll } from '../../navigation/use-focus-scroll'
-import { useFocusable } from '@noriginmedia/norigin-spatial-navigation'
+import { useFocusable } from '../../navigation/spatial'
 
 // Dimensions TV de la tuile poster (ratio 2:3).
 const POSTER_W = 190
@@ -92,7 +92,7 @@ export function PosterTile({ focusKey, item, onSelect, onArrowPress, onFocus }: 
       <span
         style={{
           fontSize: 16,
-          fontWeight: focused ? 700 : 500,
+          fontWeight: 500,
           color: focused ? 'var(--text)' : 'var(--text-dim)',
           whiteSpace: 'nowrap',
           overflow: 'hidden',

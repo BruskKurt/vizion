@@ -19,3 +19,16 @@ it('offers a working retry after a catalogue failure', async () => {
   fireEvent.click(await screen.findByRole('button', {name:'Réessayer'}))
   expect(await screen.findByRole('button', {name:'Recovered'})).toBeTruthy()
 })
+it('moves up/down by exactly one row of the grid', async () => {
+  profileStore.vodProfileId.value = 'grid-step'
+  const items = Array.from({length:100}, (_,i) => ({ id: `s${i}`, name: `S ${i}` }))
+  const { container } = render(<MediaGrid catId="step" load={async () => items} categories={async () => []} onOpen={() => {}} />)
+  const focused = () => container.querySelector('[data-focused="true"]')?.getAttribute('data-focus-key')
+  await waitFor(() => expect(focused()).toBe('mv-s0'))
+  fireEvent.keyDown(window, { key: 'ArrowDown', keyCode: 40 })
+  await waitFor(() => expect(focused()).toBe('mv-s6'))
+  fireEvent.keyDown(window, { key: 'ArrowDown', keyCode: 40 })
+  await waitFor(() => expect(focused()).toBe('mv-s12'))
+  fireEvent.keyDown(window, { key: 'ArrowUp', keyCode: 38 })
+  await waitFor(() => expect(focused()).toBe('mv-s6'))
+})
