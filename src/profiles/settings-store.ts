@@ -13,6 +13,7 @@ interface PersistedSettings {
   theme: ThemeId
   accent: AccentId
   resumeLastChannel: boolean
+  livePreview: boolean
   lastWatched: Record<string, LastWatched>
   hiddenLiveCategoryIds: Record<string, string[]>
   language: AppLanguage
@@ -24,10 +25,13 @@ export interface SettingsStore {
   accent: Signal<AccentId>
   setAppearance(theme: ThemeId, accent: AccentId): void
   resumeLastChannel: Signal<boolean>
+  /** Aperçu vidéo de la chaîne focalisée (ouvre un 2e flux IPTV). */
+  livePreview: Signal<boolean>
   hiddenLiveCategoryIds: Signal<Record<string, string[]>>
   language: Signal<AppLanguage>
   languageSelected: Signal<boolean>
   setResumeLastChannel(value: boolean): void
+  setLivePreview(value: boolean): void
   setLanguage(language: AppLanguage): void
   setLastWatched(profileId: string, channel: Channel, categoryId: string): void
   getLastWatched(profileId: string): LastWatched | null
@@ -41,6 +45,7 @@ const DEFAULTS: PersistedSettings = {
   theme: 'oled',
   accent: 'ice',
   resumeLastChannel: true,
+  livePreview: false,
   lastWatched: {},
   hiddenLiveCategoryIds: {},
   language: DEFAULT_LANGUAGE,
@@ -52,6 +57,7 @@ export function createSettingsStore(): SettingsStore {
   const theme = signal<ThemeId>(isTheme(initial.theme) ? initial.theme : 'oled')
   const accent = signal<AccentId>(isAccent(initial.accent) ? initial.accent : 'ice')
   const resumeLastChannel = signal<boolean>(initial.resumeLastChannel ?? true)
+  const livePreview = signal<boolean>(initial.livePreview ?? false)
   const lastWatched = signal<Record<string, LastWatched>>(initial.lastWatched ?? {})
   const hiddenLiveCategoryIds = signal<Record<string, string[]>>(initial.hiddenLiveCategoryIds ?? {})
   const language = signal<AppLanguage>(isAppLanguage(initial.language) ? initial.language : DEFAULT_LANGUAGE)
@@ -62,6 +68,7 @@ export function createSettingsStore(): SettingsStore {
       theme: appearance.theme,
       accent: appearance.accent,
       resumeLastChannel: resumeLastChannel.value,
+      livePreview: livePreview.value,
       lastWatched: lastWatched.value,
       hiddenLiveCategoryIds: hiddenLiveCategoryIds.value,
       language: language.value,
@@ -87,11 +94,16 @@ export function createSettingsStore(): SettingsStore {
       })
     },
     resumeLastChannel,
+    livePreview,
     hiddenLiveCategoryIds,
     language,
     languageSelected,
     setResumeLastChannel(value) {
       resumeLastChannel.value = value
+      persist()
+    },
+    setLivePreview(value) {
+      livePreview.value = value
       persist()
     },
     setLanguage(nextLanguage) {

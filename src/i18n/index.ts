@@ -129,6 +129,8 @@ const fr = {
   'settings.playback': 'Lecture',
   'settings.resumeLastChannel': 'Reprendre la dernière chaîne',
   'settings.startup': 'Démarrage',
+  'settings.livePreview': 'Aperçu vidéo des chaînes',
+  'settings.livePreviewSub': 'Lance une 2e lecture en sourdine (2 connexions IPTV) : activez seulement si votre abonnement en autorise au moins 2.',
   'settings.language': 'Langue',
 
   'profileForm.config': 'Configuration',
@@ -335,6 +337,8 @@ const en: Record<TranslationKey, string> = {
   'settings.playback': 'Playback',
   'settings.resumeLastChannel': 'Resume last channel',
   'settings.startup': 'Startup',
+  'settings.livePreview': 'Channel video preview',
+  'settings.livePreviewSub': 'Starts a 2nd muted stream (2 IPTV connections): only enable if your subscription allows at least 2.',
   'settings.language': 'Language',
 
   'profileForm.config': 'Configuration',
@@ -539,6 +543,8 @@ const es: Record<TranslationKey, string> = {
   'settings.playback': 'Reproducción',
   'settings.resumeLastChannel': 'Continuar el último canal',
   'settings.startup': 'Inicio',
+  'settings.livePreview': 'Vista previa de los canales',
+  'settings.livePreviewSub': 'Inicia una 2.ª reproducción silenciada (2 conexiones IPTV): actívala solo si tu suscripción permite al menos 2.',
   'settings.language': 'Idioma',
 
   'profileForm.config': 'Configuración',

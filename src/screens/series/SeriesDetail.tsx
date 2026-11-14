@@ -6,7 +6,7 @@ import { seriesSession } from '../../data/series-session-instance'
 import { continueWatchingStore } from '../../profiles/continue-watching'
 import { favoritesStore } from '../../profiles/favorites'
 import { profileStore } from '../../profiles/store'
-import { navigate } from '../../router/router'
+import { navigate, rememberedFocus } from '../../router/router'
 import { focusIfExists } from '../../navigation/focus'
 import { selectedSeries } from './series-nav'
 import { playEpisode } from '../player/playback'
@@ -199,10 +199,10 @@ export function SeriesDetail() {
     seriesSession.seasons(series.id).then((loaded) => {
       if (!alive) return
       setSeasons(loaded)
-      // Sélectionne automatiquement la première saison disponible.
-      if (loaded.length > 0 && selectedSeason === null) {
-        setSelectedSeason(loaded[0].seasonNumber)
-      }
+      // Retour d'un épisode : rouvre sa saison ; sinon la première saison disponible.
+      const backTo = rememberedFocus()
+      const season = loaded.find((s) => s.episodes.some((ep) => episodeKey(ep.id) === backTo)) ?? loaded[0]
+      if (season && selectedSeason === null) setSelectedSeason(season.seasonNumber)
     })
     return () => { alive = false }
   }, [series?.id])
@@ -213,16 +213,16 @@ export function SeriesDetail() {
     return () => clearTimeout(t)
   }, [])
 
-  // Une fois les saisons chargées, on déplace le focus sur le premier onglet de saison.
+  // Saisons chargées : focus sur l'épisode quitté (retour du lecteur), sinon le premier onglet.
   useEffect(() => {
     if (seasons.length === 0) return
-    const t = setTimeout(() => setFocus(seasonTabKey(seasons[0].seasonNumber)), 80)
+    const t = setTimeout(() => focusIfExists(rememberedFocus()) || setFocus(seasonTabKey(seasons[0].seasonNumber)), 80)
     return () => clearTimeout(t)
   }, [seasons])
 
   // Redirection si aucune série sélectionnée (effet, jamais pendant le rendu).
   useEffect(() => {
-    if (!series) navigate('/series')
+    if (!series) navigate('/series', { replace: true })
   }, [series])
 
   // Conteneur focusable avec boundary (hook appelé AVANT tout return conditionnel).

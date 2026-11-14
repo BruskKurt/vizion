@@ -102,7 +102,7 @@ export function MovieDetail() {
 
   // Redirection si aucun film sélectionné (effet, jamais pendant le rendu).
   useEffect(() => {
-    if (!movie) navigate('/films')
+    if (!movie) navigate('/films', { replace: true })
   }, [movie])
 
   // Conteneur focusable (hook appelé AVANT tout return conditionnel).

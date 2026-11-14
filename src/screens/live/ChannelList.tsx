@@ -63,6 +63,8 @@ function Row(props: {
 export function ChannelList({ channels, loading, selectedCategoryId, onFocusChannel, onPlay, restoreChannelId }: Props) {
   const { ref, focusKey } = useFocusable({
     focusKey: LIVE_CHANNELS,
+    // Liste vide/en chargement : pas de focus sur un conteneur sans ligne (D-pad bloqué).
+    focusable: !loading && channels.length > 0,
     preferredChildFocusKey: channels[0] ? channelFocusKey(channels[0].id) : undefined,
     saveLastFocusedChild: true,
     trackChildren: true,

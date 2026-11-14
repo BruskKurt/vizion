@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'preact/hooks'
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks'
 import { useFocusable, FocusContext } from '@noriginmedia/norigin-spatial-navigation'
 import type { Channel, EpgEntry } from '../../data/models'
 import { liveSession } from '../../data/session-instance'
-import { back, navigate } from '../../router/router'
+import { navigate } from '../../router/router'
+import { useBackHandler } from '../../navigation/back-handlers'
 import { VideoPlayer } from '../../components/VideoPlayer'
 import { Icon, type IconName } from '../../components/Icons'
 import { PlayerInfoBar } from './PlayerInfoBar'
@@ -147,19 +148,18 @@ export function LivePlayerLayer({ fullscreen }: { fullscreen: boolean }) {
     else setFailed(true)
   }
 
+  // Back avec le guide ouvert : ferme le guide (sinon App revient à la page précédente).
+  useBackHandler(useCallback(() => { setGuideOpen(false); return true }, []), fullscreen && guideOpen)
+
   // Touches actives uniquement en plein écran (sinon le browse gère le clavier).
   useEffect(() => {
     if (!fullscreen) return
     function onKey(e: KeyboardEvent) {
       const code = e.keyCode
-      if (guideOpen) {
-        if (code === 461 || code === 8 || code === 27) { e.preventDefault(); setGuideOpen(false) }
-        return
-      }
+      if (guideOpen) return
       if (code === 38) { e.preventDefault(); flashInfo(); zapTo(index - 1) }
       else if (code === 40) { e.preventDefault(); flashInfo(); zapTo(index + 1) }
       else if (code === 13) { e.preventDefault(); setGuideOpen(true) }
-      else if (code === 461 || code === 8 || code === 27) { e.preventDefault(); back() }
       else if (code === 415) { e.preventDefault(); setPaused(false); flashInfo() }
       else if (code === 19) { e.preventDefault(); setPaused(true); flashInfo() }
       else if (code === 10252) { e.preventDefault(); setPaused((p) => !p); flashInfo() }

@@ -58,6 +58,7 @@ vi.mock('../player/playback', () => ({
 // navigate → stub pour éviter toute navigation réelle pendant les tests.
 vi.mock('../../router/router', () => ({
   navigate: vi.fn(),
+  rememberedFocus: () => undefined,
 }))
 
 // ── Données de test ───────────────────────────────────────────────────────────

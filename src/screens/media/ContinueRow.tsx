@@ -24,6 +24,7 @@ export function ContinueRow({ railTarget }: Props) {
 
   const { ref, focusKey } = useFocusable({
     focusKey: CONTINUE_ROW,
+    focusable: entries.length > 0,
     saveLastFocusedChild: true,
     trackChildren: true,
   })
