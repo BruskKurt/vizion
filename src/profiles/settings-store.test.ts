@@ -15,6 +15,13 @@ describe('createSettingsStore', () => {
     expect(createSettingsStore().resumeLastChannel.value).toBe(false)
   })
 
+  it('aperçu vidéo Direct désactivé par défaut (2e connexion), modifiable + persistant', () => {
+    const s = createSettingsStore()
+    expect(s.livePreview.value).toBe(false)
+    s.setLivePreview(true)
+    expect(createSettingsStore().livePreview.value).toBe(true)
+  })
+
   it('utilise le français par défaut et persiste la langue choisie', () => {
     const s = createSettingsStore()
     expect(s.language.value).toBe('fr')

@@ -102,6 +102,12 @@ export function VideoPlayer({ src, muted = false, paused = false, showBuffering 
     } catch {
       /* environnement sans média (tests) */
     }
+    // Libère la connexion IPTV immédiatement (sinon webOS garde le flux jusqu'au GC,
+    // ce qui compte double sur les abonnements limités en connexions).
+    return () => {
+      v.removeAttribute('src')
+      try { v.load() } catch { /* environnement sans média (tests) */ }
+    }
   }, [src])
 
   // Play/pause sans recharger la source.

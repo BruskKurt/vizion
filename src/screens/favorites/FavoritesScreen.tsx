@@ -7,6 +7,7 @@ import { seriesSession } from '../../data/series-session-instance'
 import { favoritesStore } from '../../profiles/favorites'
 import { profileStore } from '../../profiles/store'
 import { focusIfExists } from '../../navigation/focus'
+import { rememberedFocus } from '../../router/router'
 import { PosterTile } from '../media/PosterTile'
 import { startPlayback } from '../live/playback'
 import { openMovie } from '../vod/vod-nav'
@@ -21,7 +22,7 @@ interface SectionProps {
 }
 
 function Section({ title, focusPrefix, items, onSelect }: SectionProps) {
-  const { ref, focusKey } = useFocusable({ saveLastFocusedChild: true, trackChildren: true })
+  const { ref, focusKey } = useFocusable({ focusable: items.length > 0, saveLastFocusedChild: true, trackChildren: true })
   if (items.length === 0) return <div ref={ref} style={{ display: 'none' }} />
   return (
     <FocusContext.Provider value={focusKey}>
@@ -48,7 +49,6 @@ function Section({ title, focusPrefix, items, onSelect }: SectionProps) {
 
 /** Écran Favoris : regroupe chaînes (profil Direct) + films & séries (profil Films) favoris. */
 export function FavoritesScreen() {
-  const { ref: rootRef, focusKey: rootKey } = useFocusable({ focusKey: 'favorites-root', saveLastFocusedChild: true, trackChildren: true })
   const livePid = profileStore.liveProfileId.value ?? ''
   const vodPid = profileStore.vodProfileId.value ?? ''
   // Lecture du signal pour réagir aux (dé)favoris.
@@ -78,11 +78,13 @@ export function FavoritesScreen() {
   }, [livePid, vodPid, favMap])
 
   const isEmpty = !loading && chans.length === 0 && movies.length === 0 && series.length === 0
+  const { ref: rootRef, focusKey: rootKey } = useFocusable({ focusKey: 'favorites-root', focusable: !loading && !isEmpty, saveLastFocusedChild: true, trackChildren: true })
 
-  // Focus initial sur le premier favori disponible une fois chargé.
+  // Focus initial : favori ouvert avant le Back, sinon le premier disponible une fois chargé.
   useEffect(() => {
     if (loading) return
     const t = setTimeout(() => {
+      if (focusIfExists(rememberedFocus())) return
       if (chans[0]) focusIfExists(`fav-channels-${chans[0].id}`)
       else if (movies[0]) focusIfExists(`fav-movies-${movies[0].id}`)
       else if (series[0]) focusIfExists(`fav-series-${series[0].id}`)

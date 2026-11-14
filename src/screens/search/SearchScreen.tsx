@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'preact/hooks'
 import { setFocus } from '@noriginmedia/norigin-spatial-navigation'
 import type { Channel, Movie, Series } from '../../data/models'
 import { focusIfExists } from '../../navigation/focus'
+import { rememberedFocus } from '../../router/router'
 import { startPlayback } from '../live/playback'
 import { openMovie } from '../vod/vod-nav'
 import { openSeries } from '../series/series-nav'
@@ -193,9 +194,14 @@ function ResultsPanel({ query, loading, results }: ResultsPanelProps) {
 
 // ── SearchScreen ──────────────────────────────────────────────────────────────
 
+/** Dernière requête de la session : retrouvée au retour d'un résultat (Back). */
+let lastQuery = ''
+
 /** Écran de recherche : clavier virtuel à gauche, résultats groupés à droite. */
 export function SearchScreen() {
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(lastQuery)
+  // Résultat ouvert avant de quitter l'écran : refocalisé dès qu'il réapparaît.
+  const backTo = useRef(rememberedFocus())
   const [error, setError] = useState(false)
   const [attempt, retry] = useState(0)
   const [results, setResults] = useState<SearchResults | null>(null)
@@ -217,6 +223,9 @@ export function SearchScreen() {
   useEffect(() => {
     const generation = ++generationRef.current
     queryRef.current = query
+    // Nouvelle frappe : on abandonne la restauration du focus sur l'ancien résultat.
+    if (query !== lastQuery) backTo.current = undefined
+    lastQuery = query
     const trimmed = query.trim()
     if (trimmed.length < 2) {
       setResults(null)
@@ -264,6 +273,8 @@ export function SearchScreen() {
       if (event.ctrlKey || event.metaKey || event.altKey) return
 
       if (event.key === 'Backspace') {
+        // Requête vide : Backspace redevient « Retour » (navigateur/clavier USB).
+        if (!queryRef.current) return
         consume(event)
         setQuery((current) => current.slice(0, -1))
         return
@@ -278,6 +289,11 @@ export function SearchScreen() {
     document.addEventListener('keydown', onKeyDown, true)
     return () => document.removeEventListener('keydown', onKeyDown, true)
   }, [])
+
+  // Retour depuis un résultat : refocalise la tuile ouverte dès que les résultats la contiennent.
+  useEffect(() => {
+    if (focusIfExists(backTo.current)) backTo.current = undefined
+  }, [results])
 
   // Focus initial : première touche du clavier dès le montage de l'écran.
   useEffect(() => {

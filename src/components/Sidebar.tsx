@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'preact/hooks'
 import { useFocusable, FocusContext, setFocus } from '@noriginmedia/norigin-spatial-navigation'
-import { navigate, route } from '../router/router'
+import { resetNavigationStack, route } from '../router/router'
 import { focusIfExists } from '../navigation/focus'
 import { LIVE_CATEGORIES } from '../screens/live/focus-keys'
 import { MOVIE_DETAIL_PLAY, VOD_CONTINUE_ROW, VOD_GRID } from '../screens/vod/vod-focus-keys'
@@ -43,8 +43,8 @@ function focusContentForPath(path: string): boolean {
 function RailItem({ item, active }: { item: Item; active: boolean }) {
   const { ref, focused } = useFocusable({
     focusKey: `nav-${item.path}`,
-    // Sections de premier niveau : remplace (pas d'empilement de l'historique Back).
-    onEnterPress: () => navigate(item.path, { replace: true }),
+    // Sections de premier niveau : pile neuve (Back ne ressort jamais dans une autre section).
+    onEnterPress: () => resetNavigationStack(item.path),
     onArrowPress: (direction) => {
       if (direction === 'right' && active && focusContentForPath(item.path)) {
         return false
@@ -55,7 +55,7 @@ function RailItem({ item, active }: { item: Item; active: boolean }) {
   return (
     <div
       ref={ref}
-      onClick={() => navigate(item.path, { replace: true })}
+      onClick={() => resetNavigationStack(item.path)}
       role="button"
       aria-label={t(item.labelKey)}
       className="rail-item"

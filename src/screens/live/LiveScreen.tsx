@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'preact/hooks'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'preact/hooks'
 import { getCurrentFocusKey, setFocus } from '@noriginmedia/norigin-spatial-navigation'
 import type { Category, Channel, EpgEntry } from '../../data/models'
 import { liveSession } from '../../data/session-instance'
@@ -6,14 +6,18 @@ import { favoritesStore } from '../../profiles/favorites'
 import { profileStore } from '../../profiles/store'
 import { settingsStore } from '../../profiles/settings'
 import { focusIfExists } from '../../navigation/focus'
+import { useBackHandler } from '../../navigation/back-handlers'
 import { CategoryList } from './CategoryList'
 import { ChannelList } from './ChannelList'
 import { ChannelPreview } from './ChannelPreview'
 import { nowPlaying, type NowPlaying } from './now-playing'
 import { startPlayback, playbackTarget, FAV_ID, type PlaybackTarget } from './playback'
+import { liveStreamUrl } from './stream-url'
 import { categoryFocusKey, channelFocusKey, LIVE_CATEGORIES } from './focus-keys'
 import { ActionButton } from '../../components/ActionButton'
 import { t } from '../../i18n'
+
+const PREVIEW_DELAY = 1000
 
 function sortChannels(list: Channel[]): Channel[] {
   return [...list].sort((a, b) => {
@@ -48,6 +52,8 @@ export function LiveScreen() {
   const hiddenCategoryIdSet = new Set(hiddenLiveCategoryIds)
   const visiblePlaylistCategories = playlistCategories.filter((cat) => !hiddenCategoryIdSet.has(cat.id))
   const categories = [{ id: FAV_ID, name: t('live.favorites'), kind: 'live' as const }, ...visiblePlaylistCategories]
+  // Back en mode édition des catégories : termine l'édition au lieu de quitter le Direct.
+  useBackHandler(useCallback(() => { setEditingCategories(false); return true }, []), editingCategories)
 
   // Horloge : rafraîchit la progression EPG périodiquement.
   useEffect(() => {
@@ -76,8 +82,10 @@ export function LiveScreen() {
 
   // Si la catégorie courante vient d'être masquée, on bascule sur la première catégorie
   // encore visible. Favoris reste toujours disponible.
+  // Attendre le chargement : sinon la catégorie restaurée au retour du lecteur est
+  // remplacée par Favoris avant d'exister, et la chaîne regardée n'est jamais refocalisée.
   useEffect(() => {
-    if (selectedCat === FAV_ID) return
+    if (selectedCat === FAV_ID || playlistCategories.length === 0) return
     if (visiblePlaylistCategories.some((cat) => cat.id === selectedCat)) return
     setSelectedCat(visiblePlaylistCategories[0]?.id ?? FAV_ID)
   }, [selectedCat, playlistCategories, hiddenLiveCategoryIds.join('|')])
@@ -144,8 +152,25 @@ export function LiveScreen() {
     else focusIfExists(categoryFocusKey(selectedCat))
   }, [channels, selectedCat])
 
-  // EPG now/next au focus. Pas d'aperçu vidéo : le compte est limité à 1 connexion,
-  // réservée au lecteur principal (un 2e flux d'aperçu échouerait).
+  // Aperçu vidéo (opt-in Réglages > Lecture) : 2e flux en sourdine après ~1 s de focus
+  // stable. Coûte une 2e connexion IPTV → jamais pour la chaîne déjà en PIP.
+  const previewOn = settingsStore.livePreview.value
+  const playingId = nowPlaying.value?.channel.id
+  useEffect(() => {
+    setPreviewSrc(null)
+    if (!previewOn || !focused || focused.id === playingId) return
+    const timer = setTimeout(() => setPreviewSrc(liveStreamUrl(focused)), PREVIEW_DELAY)
+    return () => clearTimeout(timer)
+  }, [focused, previewOn, playingId])
+
+  // Échec de l'aperçu : repli .ts (comme le lecteur principal), puis logo.
+  function onPreviewError() {
+    if (!focused) return
+    const ts = liveStreamUrl(focused, 'ts')
+    setPreviewSrc((cur) => (cur && cur !== ts ? ts : null))
+  }
+
+  // EPG now/next au focus.
   useEffect(() => {
     setEpg([])
     if (!focused) return
@@ -189,6 +214,7 @@ export function LiveScreen() {
         epg={epg}
         nowSec={nowSec}
         previewSrc={previewSrc}
+        onPreviewError={onPreviewError}
         isFavorite={focused ? favoritesStore.isFavorite(profileId, focused.id) : false}
         onPlay={() => focused && startPlayback(focused, selectedCat)}
         onToggleFavorite={() => focused && favoritesStore.toggle(profileId, focused.id)}

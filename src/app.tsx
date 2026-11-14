@@ -41,52 +41,57 @@ export function App() {
   const hasActive = profileStore.profiles.value.length > 0
   const hasSelectedLanguage = settingsStore.languageSelected.value
   const section = route.value.segments[0] ?? 'direct'
-  const isLivePlaying = section === 'direct' && route.value.segments[1] === 'play'
+  const playing = nowPlaying.value
+  // /direct/play sans chaîne (ex. rechargement) : on affiche le browse au lieu d'un écran noir sans issue.
+  const isLivePlaying = section === 'direct' && route.value.segments[1] === 'play' && playing !== null
   // Lecture plein écran générique (film ou épisode) sous la route /play.
   const isMediaPlaying = section === 'play'
   const fullscreenPlaying = isLivePlaying || isMediaPlaying
 
+  // Focus avant l'ouverture du dialogue de sortie, redonné à l'annulation.
+  const focusBeforeExit = useRef<string | null>(null)
+
+  // Point d'entrée UNIQUE du Back (lecteurs compris) : sous-vue/dialogue ouvert → page
+  // précédente → racine Direct → confirmation de sortie.
   const onAction = useCallback((action: RemoteAction) => {
     if (action.type !== 'back') return
     if (exitConfirmOpen) {
       setExitConfirmOpen(false)
       return
     }
-    // En lecture plein écran, chaque lecteur gère son propre Back (éviter la double nav).
-    if (fullscreenPlaying) return
     if (dispatchBackHandlers()) return
-    // back() dépile la pile de navigation (films/m → films/g → films, etc.).
     if (back()) return
-    // Depuis une section autre que Direct (et sans historique à dépiler), ramène à Direct.
-    if (section !== 'direct') { navigate('/direct', { replace: true }); return }
+    if (route.value.path !== '/' && route.value.path !== '/direct') { navigate('/direct', { replace: true }); return }
+    focusBeforeExit.current = getCurrentFocusKey()
     setExitConfirmOpen(true)
-  }, [exitConfirmOpen, fullscreenPlaying, section])
+  }, [exitConfirmOpen])
   useRemote(onAction)
 
-  // Restauration du focus : après un changement de section, l'élément focalisé précédent
-  // a pu se démonter (ex. carte de Réglages) → le D-pad serait « mort ». Si le focus
-  // courant n'existe plus, on le redonne au rail de la section active.
+  // Filet de sécurité : après un changement de page ou la fermeture du dialogue de sortie,
+  // l'élément focalisé a pu se démonter → D-pad « mort ». On redonne alors le focus
+  // (élément d'avant le dialogue, sinon rail de la section active).
+  const path = route.value.path
   useEffect(() => {
-    if (!hasActive || fullscreenPlaying) return
+    if (fullscreenPlaying || exitConfirmOpen) return
     const id = setTimeout(() => {
+      const beforeExit = focusBeforeExit.current
+      focusBeforeExit.current = null
       const cur = getCurrentFocusKey()
-      if (!cur || !doesFocusableExist(cur)) {
-        focusIfExists(`nav-/${section}`) || focusIfExists('nav-/direct')
-      }
+      if (cur && doesFocusableExist(cur)) return
+      focusIfExists(beforeExit) || focusIfExists(`nav-/${section}`) || focusIfExists('nav-/direct')
     }, 0)
     return () => clearTimeout(id)
-  }, [section, fullscreenPlaying, hasActive])
+  }, [path, fullscreenPlaying, exitConfirmOpen])
 
   const activeId = profileStore.liveProfileId.value
-  const playingNow = nowPlaying.value
 
   // Mémorise la dernière chaîne regardée (pour la reprise au démarrage).
   useEffect(() => {
-    if (activeId && playingNow) {
-      settingsStore.setLastWatched(activeId, playingNow.channel, playingNow.categoryId)
-      rememberChannel(activeId, playingNow.channel, playingNow.categoryId)
+    if (activeId && playing) {
+      settingsStore.setLastWatched(activeId, playing.channel, playing.categoryId)
+      rememberChannel(activeId, playing.channel, playing.categoryId)
     }
-  }, [activeId, playingNow])
+  }, [activeId, playing])
 
   // Reprise au démarrage (une fois) : relance la dernière chaîne si l'option est active.
   const resumeDone = useRef(false)
@@ -110,7 +115,7 @@ export function App() {
     <ExitConfirm onCancel={() => setExitConfirmOpen(false)} onConfirm={confirmExit} />
   ) : null
 
-  if (section === 'configure') return <RemoteSetup onClose={() => navigate(hasActive ? '/reglages' : '/direct', { replace: true })} />
+  if (section === 'configure') return <RemoteSetup onClose={() => { if (!back()) navigate(hasActive ? '/reglages' : '/direct', { replace: true }) }} />
 
   // Gate : au tout premier lancement, la langue est choisie avant le profil IPTV.
   if (!hasActive && !hasSelectedLanguage) {
@@ -133,7 +138,6 @@ export function App() {
   }
 
   const title = t(TITLE_KEYS[section] ?? 'nav.direct')
-  const playing = nowPlaying.value
 
   function content() {
     if (section === 'accueil') return <HomeScreen />

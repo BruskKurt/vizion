@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { FocusContext, useFocusable } from '@noriginmedia/norigin-spatial-navigation'
 import type { Category } from '../../data/models'
 import { profileStore } from '../../profiles/store'
 import { focusIfExists } from '../../navigation/focus'
 import { readPosition, savePosition } from '../../navigation/browse-memory'
-import { navigate } from '../../router/router'
+import { navigate, rememberedFocus } from '../../router/router'
+import { useBackHandler } from '../../navigation/back-handlers'
 import { ActionButton } from '../../components/ActionButton'
 import { GenreRow } from './GenreRow'
 import { ContinueRow } from './ContinueRow'
@@ -46,11 +47,21 @@ export function MediaHome({ section, categories: loadCategories, load, onOpen }:
   }, [loading])
   function restoreFocus() {
     const position = readPosition(key)
-    if (!restored.current && position.id && focusIfExists(position.id)) {
+    if (!restored.current && (focusIfExists(rememberedFocus()) || focusIfExists(position.id))) {
       restored.current = true
       if (ref.current) ref.current.scrollTop = position.scrollTop
     }
   }
+  function toggleBrowsing() {
+    setBrowsing(!browsing)
+    savePosition(key, { index: browsing ? 0 : 1, scrollTop: 0, query })
+  }
+  // Back en mode « Parcourir » : revient aux rangées au lieu de quitter la section.
+  useBackHandler(useCallback(() => {
+    focusIfExists(`browse-${section}`)
+    toggleBrowsing()
+    return true
+  }, [browsing, key, query, section]), browsing)
   function remember(id: string) {
     savePosition(key, { id, index: browsing ? 1 : 0, scrollTop: ref.current?.scrollTop ?? 0, query })
   }
@@ -60,7 +71,7 @@ export function MediaHome({ section, categories: loadCategories, load, onOpen }:
   }, [categories, query, alphabetical])
   return <FocusContext.Provider value={focusKey}><div ref={ref} style={{ height: '100%', overflowY: 'auto', padding: '28px 48px', boxSizing: 'border-box' }}>
     <div className="catalogue-toolbar">
-      <ActionButton focusKey={`browse-${section}`} onPress={() => { setBrowsing(!browsing); savePosition(key, { index: browsing ? 0 : 1, scrollTop: 0, query }) }}>{t('catalogue.browse')}</ActionButton>
+      <ActionButton focusKey={`browse-${section}`} onPress={toggleBrowsing}>{t('catalogue.browse')}</ActionButton>
       {browsing && <><CategoryFilter value={query} onInput={setQuery} /><ActionButton onPress={() => setAlphabetical(!alphabetical)}>{t(alphabetical ? 'catalogue.az' : 'catalogue.order')}</ActionButton></>}
     </div>
     {loading && <p role="status">{t('common.loading')}</p>}

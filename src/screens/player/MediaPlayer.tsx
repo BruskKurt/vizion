@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { VideoPlayer } from '../../components/VideoPlayer'
 import { Icon } from '../../components/Icons'
-import { navigate, back } from '../../router/router'
+import { navigate } from '../../router/router'
 import { profileStore } from '../../profiles/store'
 import { continueWatchingStore } from '../../profiles/continue-watching'
 import { playbackTarget, mediaStreamUrl } from './playback'
@@ -81,7 +81,7 @@ export function MediaPlayer() {
 
   // Redirection si aucune cible (effet, pas pendant le rendu).
   useEffect(() => {
-    if (!target) navigate('/direct')
+    if (!target) navigate('/direct', { replace: true })
   }, [target])
 
   // Gestion des touches télécommande / clavier.
@@ -118,11 +118,8 @@ export function MediaPlayer() {
         seekBaseRef.current = t
         setSeekTo(t)
         flashControls()
-      } else if (code === 461 || code === 8 || code === 27) {
-        // Retour → la sauvegarde est faite au démontage (cleanup). On revient simplement.
-        e.preventDefault()
-        back()
       }
+      // Retour : géré par App (pile de navigation) ; la position est sauvegardée au démontage.
     }
     document.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('keydown', onKey) }

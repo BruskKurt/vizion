@@ -11,6 +11,7 @@ interface Props {
   epg: EpgEntry[]
   nowSec: number
   previewSrc: string | null
+  onPreviewError?: () => void
   isFavorite: boolean
   onPlay: () => void
   onToggleFavorite: () => void
@@ -44,11 +45,13 @@ function Btn(props: { focusKey: string; label: string; channelId?: string; onPre
   )
 }
 
-export function ChannelPreview({ channel, epg, nowSec, previewSrc, isFavorite, onPlay, onToggleFavorite }: Props) {
+export function ChannelPreview({ channel, epg, nowSec, previewSrc, onPreviewError, isFavorite, onPlay, onToggleFavorite }: Props) {
   // useFocusable + le conteneur ref sont TOUJOURS rendus (même sans chaîne) pour que la
   // colonne soit mesurable par la navigation spatiale dès le départ.
   const { ref, focusKey } = useFocusable({
     focusKey: LIVE_PREVIEW,
+    // Sans chaîne, aucune action : la colonne ne doit pas capter le focus (D-pad bloqué).
+    focusable: channel !== null,
     preferredChildFocusKey: PREVIEW_PLAY,
     saveLastFocusedChild: true,
     trackChildren: true,
@@ -64,7 +67,7 @@ export function ChannelPreview({ channel, epg, nowSec, previewSrc, isFavorite, o
           <>
             <div style={{ aspectRatio: '16/9', borderRadius: 12, background: '#000', overflow: 'hidden', marginBottom: 26 }}>
               {previewSrc ? (
-                <VideoPlayer src={previewSrc} muted />
+                <VideoPlayer src={previewSrc} muted onError={onPreviewError} />
               ) : (
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', fontSize: 26 }}>
                   {channel.logo ? <img src={channel.logo} alt="" style={{ maxWidth: '40%', maxHeight: '40%' }} /> : channel.name}

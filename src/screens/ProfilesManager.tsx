@@ -116,6 +116,13 @@ export function ProfilesManager({ embedded = false }: { embedded?: boolean }) {
                   onPress={() => settingsStore.setResumeLastChannel(!settingsStore.resumeLastChannel.value)}
 
                 />
+                <Card
+                  focusKey="settings-live-preview"
+                  label={t('settings.livePreview')}
+                  sub={t('settings.livePreviewSub')}
+                  right={<Pill active={settingsStore.livePreview.value}>{settingsStore.livePreview.value ? t('common.enabled') : t('common.disabled')}</Pill>}
+                  onPress={() => settingsStore.setLivePreview(!settingsStore.livePreview.value)}
+                />
               </Section>}
 
               {section === 'diagnostics' && <PerformancePanel />}
